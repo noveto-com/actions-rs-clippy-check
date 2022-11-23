@@ -6,6 +6,7 @@ export interface Input {
     toolchain?: string;
     args: string[];
     useCross: boolean;
+    workingDirectory?: string;
 }
 
 export function get(): Input {
@@ -14,10 +15,13 @@ export function get(): Input {
     if (toolchain.startsWith("+")) {
         toolchain = toolchain.slice(1);
     }
+    const useCross = input.getInputBool("use-cross");
+    const workingDirectory = input.getInput("working-directory");
 
     return {
         args: stringArgv(input.getInput("args")),
-        useCross: input.getInputBool("use-cross"),
+        useCross,
         toolchain: toolchain || undefined,
+        workingDirectory: workingDirectory || undefined,
     };
 }

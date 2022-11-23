@@ -1,3 +1,5 @@
+import { join as pathJoin } from "path";
+
 import * as core from "@actions/core";
 
 import type { AnnotationWithMessageAndLevel, CargoMessage, Stats } from "./schema";
@@ -6,8 +8,9 @@ import { AnnotationLevel } from "./schema";
 export class OutputParser {
     private _uniqueAnnotations: Map<string, AnnotationWithMessageAndLevel>;
     private _stats: Stats;
+    private _workingDirectory?: string;
 
-    public constructor() {
+    public constructor(workingDirectory?: string) {
         this._uniqueAnnotations = new Map();
         this._stats = {
             ice: 0,
@@ -16,6 +19,7 @@ export class OutputParser {
             note: 0,
             help: 0,
         };
+        this._workingDirectory = workingDirectory;
     }
 
     public get stats(): Stats {
@@ -45,7 +49,7 @@ export class OutputParser {
             return;
         }
 
-        const parsedAnnotation = OutputParser.makeAnnotation(contents);
+        const parsedAnnotation = this.makeAnnotation(contents);
         const key = JSON.stringify(parsedAnnotation);
 
         if (this._uniqueAnnotations.has(key)) {
@@ -87,10 +91,17 @@ export class OutputParser {
         }
     }
 
+    private fixPath(file_name: string): string {
+        if (this._workingDirectory) {
+            return pathJoin(this._workingDirectory, file_name);
+        }
+        return file_name;
+    }
+
     /// Convert parsed JSON line into the GH annotation object
     ///
     /// https://developer.github.com/v3/checks/runs/#annotations-object
-    private static makeAnnotation(contents: CargoMessage): AnnotationWithMessageAndLevel {
+    private makeAnnotation(contents: CargoMessage): AnnotationWithMessageAndLevel {
         const primarySpan = contents.message.spans.find((span) => {
             return span.is_primary === true;
         });
@@ -104,7 +115,7 @@ export class OutputParser {
             level: OutputParser.parseLevel(contents.message.level),
             message: contents.message.rendered,
             properties: {
-                file: primarySpan.file_name,
+                file: this.fixPath(primarySpan.file_name),
                 startLine: primarySpan.line_start,
                 endLine: primarySpan.line_end,
                 title: contents.message.message,

@@ -1,3 +1,5 @@
+import { join as pathJoin } from "path";
+
 import { Cargo, Cross } from "@actions-rs/core";
 import * as core from "@actions/core";
 import * as exec from "@actions/exec";
@@ -68,7 +70,12 @@ async function runClippy(actionInput: input.Input, program: Program): Promise<Cl
 
     args = args.concat(actionInput.args);
 
-    const outputParser = new OutputParser();
+    let cwd = undefined;
+    if (actionInput.workingDirectory) {
+        cwd = pathJoin(process.cwd(), actionInput.workingDirectory);
+    }
+
+    const outputParser = new OutputParser(actionInput.workingDirectory);
 
     let exitCode = 0;
 
@@ -82,6 +89,7 @@ async function runClippy(actionInput: input.Input, program: Program): Promise<Cl
                     outputParser.tryParseClippyLine(line);
                 },
             },
+            cwd,
         });
     } finally {
         core.endGroup();
